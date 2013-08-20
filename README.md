@@ -1,4 +1,4 @@
 GabrielTrisca-
 ==============
 
-Gabriel Trisca's  course repository for CS-597
+Gabriel Trisca's  code repository for CS-597
