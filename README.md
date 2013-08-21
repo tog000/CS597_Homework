@@ -3,5 +3,12 @@ GabrielTrisca-
 
 Gabriel Trisca's  code repository for CS-597
 
-1. SSH doesn't work
-2. Will HTTPS with default credentials work?
+How to push easier
+------------
+
+SSH logins don't work with this reporitory, therefore we need to find an alternative.
+
+1. Edit the file `.git/config`
+2. Edit the `remote` section and add credentials `username:password@github.com`
+3. ...
+4. Profit!
