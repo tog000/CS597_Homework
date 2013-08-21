@@ -3,7 +3,7 @@ GabrielTrisca-
 
 Gabriel Trisca's  code repository for CS-597
 
-How to push easier
+How to `push` more easily
 ------------
 
 SSH logins don't work with this reporitory, therefore we need to find an alternative.
