@@ -258,10 +258,10 @@ public class App {
 		//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
 		//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
 		
-		if(args.length < 4){
+		if(args.length < 3){
 			System.out.printf("Usage: %s <input file> <output folder> <query number>%n",args[0]);
 		}else{
-			new App(args[1], args[2], Integer.valueOf(args[3]));
+			new App(args[0], args[1], Integer.valueOf(args[2]));
 		}
 
 		System.out.println("exiting ...");
