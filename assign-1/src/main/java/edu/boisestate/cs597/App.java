@@ -256,7 +256,13 @@ public class App {
 	public static void main(String[] args) throws Exception {
 
 		//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
-		new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+		//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+		
+		if(args.length < 4){
+			System.out.printf("Usage: %s <input file> <output folder> <query number>%n",args[0]);
+		}else{
+			new App(args[1], args[2], Integer.valueOf(args[3]));
+		}
 
 		System.out.println("exiting ...");
 
