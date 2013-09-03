@@ -173,12 +173,26 @@
 					current.attr("original_fill",current.style("fill"))
 					current.style("fill",color.brighter(1.2))
 
+					// Calculate offset
+					var offset = 0;
+					for(var j=0;j<this.getAttribute("day");j++){
+						offset += visitors_scale(d.visits[j])
+					}
+
+					hover.attr("x",350+offset)
+						.attr("y",40+i* height/data.length)
+						.attr("width",visitors_scale(d.visits[this.getAttribute("day")]))
+						.attr("height",20)
+						.style("opacity","1")
+						.style("fill","gray")
+
 					var tooltip = d3.select("#tooltip").html(d.visits[parseInt(this.getAttribute("day"))]+" visitors");
 					tooltip.style("top", (event.pageY-60)+"px").style("left",(event.pageX-45)+"px");
 					tooltip.style("opacity",1);
 
 				}).
 				on("mouseout",function(d,i){
+					hover.style("opacity","0")
 					var tooltip = d3.select("#tooltip").style("opacity",0);
 					current=d3.select(this);
 					current.style("cursor","default")
@@ -231,6 +245,13 @@
 			attr("width",function(d){return visitors_scale(d.total)}).
 			attr("height",20).
 			attr("fill","black")
+
+			var hover = sampleSVG.append("rect")
+				.attr("x",0)
+				.attr("y",0)
+				.attr("width",0)
+				.attr("height",0)
+				.style("fill","red")
 
 			var xAxis = d3.svg.axis()
 			.scale(visitors_scale)
