@@ -18,6 +18,8 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
+import com.google.gson.Gson;
+
 /**
  * @author Gabriel Trisca
  *
@@ -43,8 +45,15 @@ public class App {
 	public class PersonVisits {
 		public String name;
 		public Integer visits = 1;
+		public Integer dayOfWeek = 0;
 		public PersonVisits(String name) {this.name = name;}
 		public void addVisit() {this.visits++;}
+	}
+	
+	// Inner class for JSON manipulation
+	public class VisiteeWeeklyVisitors {
+		public String name;
+		public int[] visits;
 	}
 	
 	
@@ -88,7 +97,7 @@ public class App {
 				public Object call() throws Exception {
 					String[] parts = line.split(",");
 
-					String key = parts[0] + "\t" + parts[1];
+					String key = (parts[0] + "\t" + parts[1]).toUpperCase();
 					
 					// If the HashMap already contains the visitor name
 					if (hmap.containsKey(key)) {
@@ -144,11 +153,13 @@ public class App {
 	/**
 	 * Process query 2
 	 * @param writeFile should the output be written to an output file (true by default)
-	 * @return HashMap of the most popular week, key is `String` visitee name, value is `Integer` number of visits
+	 * @return HashMap of the most popular week, key is `String` visitee name, value is `int[]` number of visits per day
 	 */
-	private HashMap<String, PersonVisits> processQuery2() {return processQuery2(true);}
-	private HashMap<String, PersonVisits> processQuery2(boolean writeFile) {
+	private HashMap<String, int[]> processQuery2() {return processQuery2(true, false);}
+	private HashMap<String, int[]> processQuery2(boolean writeFile, boolean computeDaysOfWeek) {
 
+		
+		
 		// We invoke the readFile method and pass the query-specific logic (Strategy design pattern)
 		this.readFile(new Callable<Object>(){
 				public Object call(){
@@ -180,10 +191,12 @@ public class App {
 					
 					// Some lines are incomplete, filter
 					if(parts.length > 22){
-						visitee = new PersonVisits(parts[21]+" "+parts[22]);
+						visitee = new PersonVisits((parts[21]+" "+parts[22]).toUpperCase());
 					}else{
 						visitee = new PersonVisits("NO NAME");
 					}
+					
+					visitee.dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)-1; // DAY_OF_WEEK starts at 1 
 					
 					// If week doesn't have any visitors yet
 					if(weeks[week] == null){
@@ -230,15 +243,26 @@ public class App {
 		
 		// Initialize map
 		HashMap<String, PersonVisits> visiteeMap = new HashMap<String, PersonVisits>();
+		HashMap<String, int[]> visiteeDaysMap = new HashMap<String, int[]>();
+		
 		// For each visitor->visitee list
 		for(LinkedList<PersonVisits> visitees : ((HashMap<String, LinkedList<PersonVisits>>)weeks[maxWeek[0]]).values()){
 			// For each visitee, add it to the map and increase visit count 
 			for(PersonVisits visitee : visitees){
 				if(visiteeMap.containsKey(visitee.name)){
-					visiteeMap.get(visitee.name).addVisit();; // Increase by one
+					visiteeMap.get(visitee.name).addVisit(); // Increase by one
 				}else{
 					visiteeMap.put(visitee.name,new PersonVisits(visitee.name)); // Set to one
 				}
+				
+				if(computeDaysOfWeek){
+					if(visiteeDaysMap.containsKey(visitee.name)){
+						visiteeDaysMap.get(visitee.name)[visitee.dayOfWeek] += 1; // Increase by one
+					}else{
+						visiteeDaysMap.put(visitee.name,new int[7]); // Set to one
+					}
+				}
+				
 			}
 		}
 		
@@ -279,8 +303,43 @@ public class App {
 		}
 		
 		// Return the HashMap of the best week (For query 3)
-		return visiteeMap;
+		return visiteeDaysMap;
 		
+	}
+	
+	private void processQuery3(HashMap<String, int[]> maxWeek){
+		// Generate output file 
+		String outputFile = this.outputFolder + "/query_results_3.json";
+		File file = new File(outputFile);
+		
+		Gson gson = new Gson();
+
+		try {
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+
+			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+			
+			bw.write("["); // Open JSON document
+			
+			for(Entry<String, int[]> entry : maxWeek.entrySet()){
+				VisiteeWeeklyVisitors vwv = new VisiteeWeeklyVisitors();
+				vwv.name = entry.getKey();
+				vwv.visits = entry.getValue();
+				bw.write(gson.toJson(vwv)+",\n");
+				if(DEBUG)
+					System.out.printf("%s\t%d\n", entry.getKey(), entry.getValue());
+			}
+			
+			bw.write("{}]"); // close
+			
+			bw.close();
+
+		} catch (Exception e) {
+			System.err.printf("Error writting to output file!\n");
+			System.exit(1);
+		}
 	}
 
 	public App(String inputFile, String outputFolder, int query) {
@@ -290,43 +349,34 @@ public class App {
 		// To calculate enlapsed times
 		long init = System.currentTimeMillis();
 		
-		switch (query) {
-		
-		case 1:
+		if(query == 1){
 			
 			// Initialize
 			hmap = new HashMap<String, PersonVisits>();
 			
 			processQuery1();
 			
-			break;
 			
-		case 2:
+		}else if(query == 2 || query == 3){
 			
 			// Initialize structures for date/week handling
 			this.sdf = new SimpleDateFormat("M/d/y H:m");
 			this.cal = Calendar.getInstance();
 			this.weeks = new HashMap[54];
 			
-			processQuery2();
+			if(query == 2){
+				// Run query 2 and exit
+				processQuery2();
+			}else{
+				// Run query 2 without saving file
+				HashMap<String, int[]> maxWeek = processQuery2(false,true);
+				// Go on to process query 3
+				processQuery3(maxWeek);
+			}
 			
-			break;
-		case 3: // Case 3 is just one step further from step 2
-
-			// Initialize structures for date/week handling
-			this.sdf = new SimpleDateFormat("M/d/y H:m");
-			this.cal = Calendar.getInstance();
-			this.weeks = new HashMap[54];
-			
-			//maxWeek = processQuery2(false);
-			
-			// Print all the pairs
-			
-			break;
-		default:
+		}else{
 			System.err.println("I don't know that query number!");
 			System.exit(1);
-			break;
 		}
 		
 		System.out.printf("Query #%d Done.%nEnlapsed %dms%n", query, System.currentTimeMillis() - init);
@@ -337,7 +387,8 @@ public class App {
 		
 		/**/
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
-			new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+			//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+			new App("WhiteHouse-WAVES-2012.csv", "./", 3);
 		/*/
 		if(args.length < 3){
 			System.out.printf("Usage: ./run.sh <input file> <output folder> <query number>%n");

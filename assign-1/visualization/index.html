@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Busiest week of the year</title>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+	<link type="text/css" rel="stylesheet" href="css/colorbrewer.css"/>
+	<style type="text/css">
+
+		body{font-family:"Open Sans" sans-serif;text-align: center}
+
+		.axis path,
+		.axis line {
+			fill: none;
+			stroke: black;
+			shape-rendering: crispEdges;
+		}
+
+		.axis text {
+			font-family: sans-serif;
+			font-size: 10px;
+		}
+
+		.green{
+			fill:rgb(45,234,23);
+		}
+
+		.axis.green path, .axis.green line{
+			stroke:rgb(45,234,23);
+		}
+
+		#viz{
+			text-align:center;
+			margin:0 auto;
+			margin-top:30px;
+		}
+	</style>
+	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+	<script type="text/javascript">
+
+		var data = null;
+
+		document.addEventListener("DOMContentLoaded",function(){
+			d3.json("./query_results_3.json", function(error, json) {
+				if (error){
+					console.warn(error);
+				}
+
+				//console.log(json)
+				json.pop();// Get rid of the last empty element
+				data = json; 
+				visualize();
+			});
+		});
+
+		var color = function(value){
+			var result = d3.scale.pow().exponent(1.001).domain([1,400]).range([1,10])(value);
+			return "q" + Math.min(parseInt(result),9) + "-7";
+		}
+
+		//var visitors_scale = d3.scale.log().domain([1,30000]).nice().range([0,500]);
+		var visitors_scale = d3.scale.pow().domain([1,30000]).nice().range([0,500]);
+
+		function visualize(){
+
+			// Sort the data
+			data = data.sort(function(a,b){
+				var totala=0;
+				for (var j=0;j<7;j++){
+					totala += a.visits[j];
+				}
+				a.total = totala;
+				var totalb=0;
+				for (var j=0;j<7;j++){
+					totalb += b.visits[j];
+				}
+				b.total = totalb;
+				return totalb-totala;
+			});
+
+			// Keep the top 30
+			data.splice(20);
+
+
+			var width = 900;
+			var height = 500;
+
+			var sampleSVG = d3.select("#viz")
+			.append("svg")
+			.attr("class","OrRd")
+			.attr("width", width)
+			.attr("height", height+30);
+
+			var daysWeek = ["S","M","T","W","T","F","S"]
+			
+			sampleSVG.selectAll("days_label").
+			data(daysWeek).
+			enter().
+			append("text").
+			text(function(d){return d}).
+			attr("x",function(d,i){ return 150 + i * 20}).
+			attr("y",20).
+			attr("font-family", "Open Sans").
+			attr("font-size", "12px").
+			attr("text-anchor", "middle").
+			attr("font-weight","bold").
+			attr("fill", "black");
+
+			sampleSVG.selectAll("locations").
+			data(data).
+			enter().
+			append("text").
+			text(function(d){return d.name}).
+			attr("x", 0).
+			attr("y", function(d, i) { return 50+i * height/data.length; }).
+			attr("font-family", "Open Sans").
+			attr("alignment-baseline","middle").
+			attr("font-size", "12px").
+			attr("fill", "black");
+
+			// For every day of the week
+			for(var i=0;i<7;i++){
+
+				sampleSVG.selectAll("days_of_week_"+i).
+				data(data).
+				enter().
+				append("rect").
+				attr("x", function(d) { return 140+i*20}).
+				attr("y", function(d, i) { return 40+i * height/data.length; }).
+				attr("width",20).
+				attr("height",20).
+				attr("class",function(d){return color(d.visits[i])})
+
+			}
+
+			for(var i=1;i<7;i++){
+
+				sampleSVG.append("line").
+				attr("x1",function(d) { return 140+i*20}).
+				attr("y1",10).
+				style("stroke-opacity", .2).
+				style("stroke", d3.rgb(0,0,0)).
+				attr("x2",function(d) { return 140+i*20}).
+				attr("y2",35+height);
+
+			}
+			
+			sampleSVG.append("text").
+			text("Total").
+			attr("x", 150+7*20).
+			attr("y", 20).
+			attr("font-family", "Open Sans").
+			attr("font-size", "12px").
+			attr("font-weight","bold").
+			attr("fill", "black");
+
+			sampleSVG.selectAll("totals").
+			data(data).
+			enter().
+			append("text").
+			text(function(d){return d.total}).
+			attr("x", 150+(7*20)).
+			attr("y", function(d, i) { return 50 + i * height/data.length; }).
+			attr("font-family", "Open Sans").
+			attr("font-size", "12px").
+			attr("alignment-baseline","middle").
+			attr("fill", "black");
+
+			// Log scale
+			sampleSVG.selectAll("bars"+i).
+			data(data).
+			enter().
+			append("rect").
+			attr("x", 350).
+			attr("y", function(d, i) { return 40+i * height/data.length; }).
+			attr("width",function(d){return visitors_scale(d.total)}).
+			attr("height",20).
+			attr("fill","black")
+
+			var xAxis = d3.svg.axis()
+			.scale(visitors_scale)
+			.tickValues([500, 5000, 10000,30000])
+			.orient("top")
+
+			sampleSVG.append("g")
+			.attr("transform", "translate(" + 350 + "," + 35 + ")")
+			.attr("class", "x axis")
+			.call(xAxis);
+
+		}
+	</script>
+</head>
+<body>
+	<h1>Busiest week at the White House</h1>
+	<div id="viz"></div>
+</body>
+</html>
