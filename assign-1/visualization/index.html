@@ -33,6 +33,34 @@
 			margin:0 auto;
 			margin-top:30px;
 		}
+		#tooltip{
+			background-color:rgba(0,0,0,0.8);
+			color:white;
+			width:80px;
+			font-size:12px;
+			padding:10px;
+			position:absolute;
+			border-radius:10px;
+			cursor:default;
+			opacity:0;
+			transition: opacity 0.2s;
+			-webkit-transition: opacity 0.2s;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: -moz-none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+		#subtitle{
+			font-size:9px;
+			color:gray;
+		}
+		h1{margin-bottom:0px;}
+		#subtitle a{
+			text-decoration: none;
+			color:black;
+		}
 	</style>
 	<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 	<script type="text/javascript">
@@ -90,6 +118,15 @@
 			.attr("width", width)
 			.attr("height", height+30);
 
+			sampleSVG.append("text").
+			text("Location").
+			attr("x", 20).
+			attr("y", 20).
+			attr("font-family", "Open Sans").
+			attr("font-size", "12px").
+			attr("font-weight","bold").
+			attr("fill", "black");
+
 			var daysWeek = ["S","M","T","W","T","F","S"]
 			
 			sampleSVG.selectAll("days_label").
@@ -128,7 +165,26 @@
 				attr("y", function(d, i) { return 40+i * height/data.length; }).
 				attr("width",20).
 				attr("height",20).
-				attr("class",function(d){return color(d.visits[i])})
+				attr("class",function(d){return color(d.visits[i])}).
+				on("mouseover",function(d,i){
+					current=d3.select(this);
+					current.style("cursor","pointer")
+					color = d3.rgb(current.style("fill"))
+					current.attr("original_fill",current.style("fill"))
+					current.style("fill",color.brighter(1.2))
+
+					var tooltip = d3.select("#tooltip").html(d.visits[parseInt(this.getAttribute("day"))]+" visitors");
+					tooltip.style("top", (event.pageY-60)+"px").style("left",(event.pageX-45)+"px");
+					tooltip.style("opacity",1);
+
+				}).
+				on("mouseout",function(d,i){
+					var tooltip = d3.select("#tooltip").style("opacity",0);
+					current=d3.select(this);
+					current.style("cursor","default")
+					current.style("fill",current.attr("original_fill"))
+				}).
+				attr("day",i);
 
 			}
 
@@ -186,11 +242,22 @@
 			.attr("class", "x axis")
 			.call(xAxis);
 
+			sampleSVG.append("text").
+			text("Visits").
+			attr("x", 150+25*20).
+			attr("y", 20).
+			attr("font-family", "Open Sans").
+			attr("font-size", "12px").
+			attr("font-weight","bold").
+			attr("fill", "black");
+
 		}
 	</script>
 </head>
 <body>
 	<h1>Busiest week at the White House</h1>
+	<div id="subtitle">by Gabriel Trisca &mdash; Check the input file <a href="./query_results_3.json">here</a></div>
+	<div id="tooltip">asdf</div>
 	<div id="viz"></div>
 </body>
 </html>
