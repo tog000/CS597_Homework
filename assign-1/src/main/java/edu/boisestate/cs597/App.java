@@ -385,10 +385,10 @@ public class App {
 
 	public static void main(String[] args) throws Exception {
 		
-		/**/
+		/**
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
-			new App("WhiteHouse-WAVES-2012.csv", "./", 3);
+			//new App("WhiteHouse-WAVES-2012.csv", "./", 3);
 		/*/
 		if(args.length < 3){
 			System.out.printf("Usage: ./run.sh <input file> <output folder> <query number>%n");
