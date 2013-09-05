@@ -191,7 +191,7 @@ public class App {
 					
 					// Some lines are incomplete, filter
 					if(parts.length > 22){
-						visitee = new PersonVisits((parts[21]+" "+parts[22]).toUpperCase());
+						visitee = new PersonVisits((parts[19]+" "+parts[20]).toUpperCase());
 					}else{
 						visitee = new PersonVisits("NO NAME");
 					}
@@ -385,9 +385,9 @@ public class App {
 
 	public static void main(String[] args) throws Exception {
 		
-		/**
+		/**/
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
-			//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+			new App("WhiteHouse-WAVES-2012.csv", "./", 2);
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 3);
 		/*/
 		if(args.length < 3){
