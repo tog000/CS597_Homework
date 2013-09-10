@@ -6,58 +6,87 @@ package edu.boisestate.cs597;
  */
 
 import java.io.IOException;
-import java.util.*;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
 
 public class ProblemI {
-
-	//@TODO: Change the Key/Value types of the Map to suite your problem definition 
-	public static class Map extends MapReduceBase implements
-			Mapper<Text, Text, Text, Text> {
-		public void map(Text arg0, Text arg1, OutputCollector<Text, Text> arg2,
-				Reporter arg3) throws IOException {
-			// TODO Auto-generated method stub
-
+	
+	public static class VisitorsMapper extends Mapper<LongWritable, Text, Text, IntWritable>{
+		
+		private String[] parts;
+		
+		public void map(LongWritable key, Text line, Context context) throws IOException, InterruptedException{
+			
+			//FileSplit fileSplit =  (FileSplit) context.getInputSplit();
+			
+			parts = line.toString().split(",");
+			
+			if(parts.length > 2){
+				context.write(new Text(parts[0].toUpperCase()+"\t"+parts[1].toUpperCase()), new IntWritable(1));
+			}
 		}
+		
 	}
+	
+	public static class VisitorsReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
 
-	//@TODO: Change the Key/Value types of the Reduce to suite your problem definition
-	public static class Reduce extends MapReduceBase implements
-			Reducer<Text, Text, Text, Text> {
-
-		public void reduce(Text arg0, Iterator<Text> arg1,
-				OutputCollector<Text, Text> arg2, Reporter arg3)
-				throws IOException {
-			// TODO Auto-generated method stub
+		private int total = 0;
+		
+		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+			
+			total=0;
+			for(IntWritable count : values){
+				total+=count.get();
+			}
+			
+			context.write(key, new IntWritable(total));
 			
 		}
 	}
-
+	
 	public static void main(String[] args) throws Exception {
 		
-		//@TODO: Change the contents of this method suite your problem definition
-		JobConf conf = new JobConf(ProblemI.class);
-		conf.setJobName("Problem I");
+		Configuration conf = new Configuration();
+	    FileSystem fs = FileSystem.get(conf);
+		
+		Job job1 = new Job(conf, "Problem I");
+		job1.setJarByClass(ProblemI.class);
 
-		conf.setOutputKeyClass(Text.class);
-		conf.setOutputValueClass(Text.class);
+		job1.setOutputKeyClass(Text.class);
+		job1.setOutputValueClass(IntWritable.class);
 
-		conf.setMapperClass(Map.class);
-		conf.setCombinerClass(Reduce.class);
-		conf.setReducerClass(Reduce.class);
+		job1.setMapperClass(VisitorsMapper.class);
+		job1.setCombinerClass(VisitorsReducer.class);
+		job1.setReducerClass(VisitorsReducer.class);
 
-		conf.setInputFormat(TextInputFormat.class);
-		conf.setOutputFormat(TextOutputFormat.class);
-
-		//@TODO modify this section to use GenericOptionsParser
-		// See : http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/util/GenericOptionsParser.html
-		FileInputFormat.setInputPaths(conf, new Path(args[0]));
-		FileOutputFormat.setOutputPath(conf, new Path(args[1]));
+		GenericOptionsParser gop = new GenericOptionsParser(args);
+		String[] args2 = gop.getRemainingArgs();
+		
+		FileInputFormat.addInputPath(job1, new Path(args2[0]));
+		
+		Path outputPath = new Path(args2[1]);
+		if(fs.exists(outputPath)){
+	    	fs.delete(outputPath,true);
+	    }
+		FileOutputFormat.setOutputPath(job1, outputPath);
+		
+		
+		job1.waitForCompletion(true);
+		
 		int QueryId = Integer.parseInt(args[2]);
 
-		JobClient.runJob(conf);
+		
+		
 	}
 }
