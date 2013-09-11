@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,6 +28,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
@@ -125,21 +127,22 @@ public class ProblemI {
 		}
 	}
 	
-	public static class BestWeekMapper extends Mapper<LongWritable, Text, Text, IntWritable>{
+	public static class BestWeekMapper extends Mapper<LongWritable, Text, Text, VisitWritable>{
 		
 		private String[] parts;
 		private SimpleDateFormat sdf = new SimpleDateFormat("M/d/y H:m");
 		private Calendar cal = Calendar.getInstance();
 		private Date date;
 		private int weekNumber;
+		private String visitor;
+		private String visitee;
 		
 		public void map(LongWritable key, Text line, Context context) throws IOException, InterruptedException{
 			
-			//FileSplit fileSplit =  (FileSplit) context.getInputSplit();
-			
+			// Split the line
 			parts = line.toString().split(",");
 			
-			if(parts.length > 12){
+			if(parts.length > 20){
 				try{
 					// Try to parse the date
 					date = sdf.parse(parts[12]);
@@ -154,39 +157,92 @@ public class ProblemI {
 
 			cal.setTime(date);
 			
-			// Generate key with week
+			// Generate value with week
 			weekNumber = cal.get(Calendar.WEEK_OF_YEAR);
+			
+			// Generate visitor name
+			visitor = (parts[2]+"\t"+parts[1]).toUpperCase();
+			
+			// Generate visitee name
+			visitee = (parts[19]+"\t"+parts[20]).toUpperCase();
 
-			context.write(new Text(Integer.valueOf(weekNumber).toString()), new IntWritable(1));
+			// THIS DOESN'T WORK, we want UNIQUE visitors
+			//context.write(new IntWritable(weekNumber),new VisitWritable(weekNumber, visitor, visitee));
+
+			// Create custom object for storing visitor/visitee and write to context
+			context.write(new Text(visitor),new VisitWritable(weekNumber, visitor, visitee));
+			
 			
 		}
 		
 	}
 	
-	public static class BestWeekReducer extends Reducer<Text, IntWritable, Text, IntWritable>{
-
-		private int total = 0;
-		private MultipleOutputs<Text, IntWritable> mos;
+	public static class BestWeekReducer extends Reducer<Text, VisitWritable, IntWritable, VisitWritable>{
+		
+		private boolean weeks[] = new boolean[54];
+		
+		public void reduce(Text key, Iterable<VisitWritable> values,  Context context) throws IOException, InterruptedException {
+			
+			// We want write back with the week as the key and VisitWritable as value, keeping track of weeks to remove duplicates
+			for(VisitWritable visit : values){
+				if(!weeks[visit.week.get()]){
+					context.write(visit.week, visit);
+				}
+			}			
+		}
+	}
+	
+	public static class BestWeekVisiteesReducer extends Reducer<IntWritable, VisitWritable, Text, Text>{
+		
+		// I have two different outputs for the files, can't parametrize MultipleOutputs.
+		private MultipleOutputs mos;
 		
 		public void setup(Context context) {
-			mos = new MultipleOutputs<Text, IntWritable>(context);
+			mos = new MultipleOutputs(context);
 		}
-		
-		public void reduce(Text key, Iterable<IntWritable> values,  Context context) throws IOException, InterruptedException {
+
+		public void reduce(IntWritable key, Iterable<VisitWritable> values,  Context context) throws IOException, InterruptedException {
 			
-			total=0;
-			for(IntWritable count : values){
-				total+=count.get();
+			// We want write back with the week as the key and visitee as value
+			int total = 0;
+			for(VisitWritable visit : values){
+				mos.write("week", visit.visitee, visit.visitor, key.toString());
+				//context.write(visit.week, visit.visitee);
+				total += 1;
 			}
+
+			// Write to the totals file
+			mos.write("weekTotals", key, new IntWritable(total));
 			
-			// We flip the key so the sort step gets us the best week
-			//context.write(key, new IntWritable(total));
-			mos.write("weeks", key, new IntWritable(total));
 		}
 		
 		public void cleanup(Context context) throws IOException, InterruptedException {
 			mos.close();
 		}
+		
+	}
+
+//	private class BestWeekPathFilter implements PathFilter{
+//		public BestWeekPathFilter() {}
+//		public boolean accept(Path path) {
+//			return path.getName().contains("-BEST");
+//		}
+//	}
+	
+	public static class BestWeekVisiteesCountReducer extends Reducer<Text, Text, Text, IntWritable>{
+		
+		public void reduce(Text key, Iterable<Text> values,  Context context) throws IOException, InterruptedException {
+			
+			// We want write back with the week as the key and visitee as value
+			int total = 0;
+			for(Text visitor : values){
+				total += 1;
+			}
+			
+			context.write(key, new IntWritable(total));
+			
+		}
+		
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -240,16 +296,20 @@ public class ProblemI {
 			
 		}else{
 			
-			Job job1 = new Job(conf, "Find best week");
+			Job job1 = new Job(conf, "Write all pairs for every week");
 			job1.setJarByClass(ProblemI.class);
-		
-			job1.setMapOutputKeyClass(Text.class);
-			job1.setMapOutputValueClass(IntWritable.class);
 			
-			job1.setMapperClass(BestWeekMapper.class);
-			//job1.setCombinerClass(BestWeekReducer.class);
+			job1.setMapOutputKeyClass(Text.class);
+			job1.setMapOutputValueClass(VisitWritable.class);
+			job1.setMapperClass(BestWeekMapper.class);			
+			
+			job1.setOutputKeyClass(IntWritable.class);
+			job1.setOutputValueClass(VisitWritable.class);
 			job1.setReducerClass(BestWeekReducer.class);
-	
+			
+			// If we output the SequenceFileOutputFormat, the next mapper won't need to parse
+			job1.setOutputFormatClass(SequenceFileOutputFormat.class);
+			
 			GenericOptionsParser gop = new GenericOptionsParser(args);
 			String[] args2 = gop.getRemainingArgs();
 			
@@ -259,63 +319,116 @@ public class ProblemI {
 			if(fs.exists(tmpPath)){
 		    	fs.delete(tmpPath,true);
 		    }
-		    //fs.deleteOnExit(tmpPath);
-			
-			job1.setOutputFormatClass(SequenceFileOutputFormat.class);
+		    fs.deleteOnExit(tmpPath);
 			
 		    FileOutputFormat.setOutputPath(job1, tmpPath);
-		    MultipleOutputs.addNamedOutput(job1, "weeks", SequenceFileOutputFormat.class, Text.class, IntWritable.class);
 		    
 		    job1.waitForCompletion(true);
 		    
+		    Job job2 = new Job(conf, "Find best week");
+			job2.setJarByClass(ProblemI.class);
+		
+			job2.setMapOutputKeyClass(IntWritable.class);
+			job2.setMapOutputValueClass(VisitWritable.class);
+			
+			job2.setInputFormatClass(SequenceFileInputFormat.class);
+			job2.setOutputFormatClass(SequenceFileOutputFormat.class);
+			
+			job2.setReducerClass(BestWeekVisiteesReducer.class);
+			
+
+			// Custom output file for week totals 
+			MultipleOutputs.addNamedOutput(job2, "weekTotals", SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
+
+			// Additional files for the weekly results
+			MultipleOutputs.addNamedOutput(job2, "week", SequenceFileOutputFormat.class, Text.class, Text.class);
+			
+
+			FileInputFormat.addInputPath(job2, tmpPath);
+
+			Path tmpPath2 = new Path("tmp2/");
+			if(fs.exists(tmpPath2)){
+		    	fs.delete(tmpPath2,true);
+		    }
+		    fs.deleteOnExit(tmpPath2);
+			
+			FileOutputFormat.setOutputPath(job2, tmpPath2);
 		    
-		    //
-		    //
-		    // TODO
-		    // Map-Reduce by visitor, value = array of week numbers, save as a SequenceFileOutputFormat
-		    // Set the input format to SequenceFileOutputFormat, Flip keys on the mapper, on the reducer write week and total visitors
-		    // Read the file manually with the sequencefile reader
-		    //
-		    //
-		    
-		    
-		    int[] maxWeek = {0,0};
-		    FileStatus[] fss = fs.listStatus(tmpPath);
+		    job2.waitForCompletion(true);
+
+		    // Find the best week from the totals file
+		    int[] weekTotals = new int[54];
+		    Path path;
+		    // For every file in the output directory
+		    FileStatus[] fss = fs.listStatus(tmpPath2);
 		    for (FileStatus status : fss) {
-		    	if(status.getPath().getName().contains("weeks")){
-			        Path path = status.getPath();
+		    	// There might be multiple weekTotals if there are multiple reducers, so we accumulate totals
+		    	if(status.getPath().getName().contains("weekTotals")){
+			        path = status.getPath();
 			        SequenceFile.Reader reader = new SequenceFile.Reader(fs, path, conf);
-			        Text key = new Text();
+			        IntWritable key = new IntWritable();
 			        IntWritable value = new IntWritable();
 			        while (reader.next(key, value)) {
-			            if(value.get() > maxWeek[0]){
-			            	maxWeek[0] = value.get();
-			            	maxWeek[1] = Integer.valueOf(key.toString()); 
-			            }
+			        	weekTotals[key.get()] += value.get();
 			        }
 			        reader.close();
 		    	}
 		    }
 		    
+		    // Find the maximum accumulated total for a week
+		    int[] maxWeek = new int[2];
+		    for(int i=0;i<weekTotals.length;i++){
+		    	if(weekTotals[i] > maxWeek[0]){
+	            	maxWeek[0] = weekTotals[i];
+	            	maxWeek[1] = i; 
+	            }
+		    }
+		    
 		    LOG.warn("Found the best week to be "+maxWeek[1]+" with "+maxWeek[0]+" visitors.");
 		    
+		    // Add the files for the right week to a list that later will be fed to the FileInputFormat
+		    LinkedList<Path> bestWeekFiles = new LinkedList<Path>();
+		    for (FileStatus status : fss) {
+		    	if(status.getPath().getName().contains(Integer.valueOf(maxWeek[1]).toString()+"-")){
+			        path = status.getPath();
+			        
+			        // PathFilter doesn't work, why? No clue.
+			        
+			        //Path bestWeek = new Path(tmpPath2.getName()+"/"+path.getName()+"-BEST");
+				    //fs.rename(path, bestWeek);
+				    //LOG.warn("Renamed file: "+path.toString()+" to "+bestWeek.toString());
+			        
+				    bestWeekFiles.add(path);
+		    	}
+		    }
 		    
-		    /**
-		    Job job2 = new Job(conf, "Extract top 20 visitors");
-		    job2.setJarByClass(ProblemI.class);
-			job2.setReducerClass(TopVisitorsReducer.class);
+		    // Accumulate the totals from the visitors for the week
+		    Job job3 = new Job(conf, "Find list of visitees week");
+			job3.setJarByClass(ProblemI.class);
 			
-			job2.setNumReduceTasks(1);
+			job3.setMapOutputKeyClass(Text.class);
+			job3.setMapOutputValueClass(Text.class);
 			
-			FileInputFormat.addInputPath(job2, tmpPath);
+			job3.setInputFormatClass(SequenceFileInputFormat.class);
+		
+			job3.setOutputKeyClass(Text.class);
+			job3.setOutputValueClass(IntWritable.class);
 			
+			job3.setReducerClass(BestWeekVisiteesCountReducer.class);
+			
+			for(Path p : bestWeekFiles){
+				FileInputFormat.addInputPath(job3, p);
+			}
+
 			Path outputPath = new Path(args2[1]);
 			if(fs.exists(outputPath)){
 		    	fs.delete(outputPath,true);
 		    }
-			FileOutputFormat.setOutputPath(job2, outputPath);
-			job2.waitForCompletion(true);
-			/**/	
+			
+			FileOutputFormat.setOutputPath(job3, outputPath);
+		    
+		    job3.waitForCompletion(true);
+		    
 		}
 		
 	}
