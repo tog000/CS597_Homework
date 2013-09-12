@@ -22,8 +22,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -90,7 +93,6 @@ public class ProblemI {
 		private VisitorCount vc;
 		private int i;
 		private String[] parts;
-		private String line;
 		
 		public void reduce(LongWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			
@@ -139,7 +141,6 @@ public class ProblemI {
 		
 		public void map(LongWritable key, Text line, Context context) throws IOException, InterruptedException{
 			
-			// Split the line
 			parts = line.toString().split(",");
 			
 			if(parts.length > 20){
@@ -157,13 +158,8 @@ public class ProblemI {
 
 			cal.setTime(date);
 			
-			// Generate value with week
 			weekNumber = cal.get(Calendar.WEEK_OF_YEAR);
-			
-			// Generate visitor name
 			visitor = (parts[2]+"\t"+parts[1]).toUpperCase();
-			
-			// Generate visitee name
 			visitee = (parts[19]+"\t"+parts[20]).toUpperCase();
 
 			// THIS DOESN'T WORK, we want UNIQUE visitors
@@ -229,20 +225,45 @@ public class ProblemI {
 //		}
 //	}
 	
-	public static class BestWeekVisiteesCountReducer extends Reducer<Text, Text, Text, IntWritable>{
+	public static class BestWeekVisiteesCountReducer extends Reducer<Text, Text, TextIntWritable, NullWritable>{
 		
 		public void reduce(Text key, Iterable<Text> values,  Context context) throws IOException, InterruptedException {
 			
-			// We want write back with the week as the key and visitee as value
+			// We want write back with the visitee and the count
 			int total = 0;
-			for(Text visitor : values){
+			for(@SuppressWarnings("unused") Text visitor : values){
 				total += 1;
 			}
-			
-			context.write(key, new IntWritable(total));
-			
+			context.write(new TextIntWritable(key,total), NullWritable.get());
 		}
+	}
+	
+	public static class KeyComparator extends WritableComparator {
+		protected KeyComparator() {
+			super(TextIntWritable.class, true);
+		}
+
+		@Override
+		public int compare(WritableComparable w1, WritableComparable w2) {
+			TextIntWritable tw1 = (TextIntWritable) w1;
+			TextIntWritable tw2 = (TextIntWritable) w2;
+			int cmp = -tw1.number.compareTo(tw2.number);
+			// If the numbers are different, sort ASC by number
+			if (cmp != 0) {
+				return cmp;
+			}
+			// Otherwise, sort alphabetically
+			return tw1.text.compareTo(tw2.text);
+		}
+	}
+
+	public static class SortedVisiteesReducer extends Reducer<TextIntWritable, NullWritable, Text, IntWritable>{
 		
+		public void reduce(TextIntWritable key, Iterable<NullWritable> values, Context context) throws IOException, InterruptedException {
+			
+			// We want write back with the visitee and the count
+			context.write(key.text,key.number);
+		}
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -335,7 +356,6 @@ public class ProblemI {
 			job2.setOutputFormatClass(SequenceFileOutputFormat.class);
 			
 			job2.setReducerClass(BestWeekVisiteesReducer.class);
-			
 
 			// Custom output file for week totals 
 			MultipleOutputs.addNamedOutput(job2, "weekTotals", SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
@@ -392,7 +412,7 @@ public class ProblemI {
 		    	if(status.getPath().getName().contains(Integer.valueOf(maxWeek[1]).toString()+"-")){
 			        path = status.getPath();
 			        
-			        // PathFilter doesn't work, why? No clue.
+			        // PathFilter doesn't work. Why? No clue.
 			        
 			        //Path bestWeek = new Path(tmpPath2.getName()+"/"+path.getName()+"-BEST");
 				    //fs.rename(path, bestWeek);
@@ -410,25 +430,50 @@ public class ProblemI {
 			job3.setMapOutputValueClass(Text.class);
 			
 			job3.setInputFormatClass(SequenceFileInputFormat.class);
+			job3.setOutputFormatClass(SequenceFileOutputFormat.class);
 		
-			job3.setOutputKeyClass(Text.class);
-			job3.setOutputValueClass(IntWritable.class);
+			job3.setOutputKeyClass(TextIntWritable.class);
+			job3.setOutputValueClass(NullWritable.class);
 			
 			job3.setReducerClass(BestWeekVisiteesCountReducer.class);
 			
 			for(Path p : bestWeekFiles){
 				FileInputFormat.addInputPath(job3, p);
 			}
-
-			Path outputPath = new Path(args2[1]);
-			if(fs.exists(outputPath)){
-		    	fs.delete(outputPath,true);
-		    }
 			
-			FileOutputFormat.setOutputPath(job3, outputPath);
+			Path tmpPath3 = new Path("tmp3/");
+			if(fs.exists(tmpPath3)){
+		    	fs.delete(tmpPath3,true);
+		    }
+		    fs.deleteOnExit(tmpPath3);
+			
+			FileOutputFormat.setOutputPath(job3, tmpPath3);
 		    
 		    job3.waitForCompletion(true);
 		    
+		    // Secondary sort
+		    Job job4 = new Job(conf, "Secondary Sort");
+			job4.setJarByClass(ProblemI.class);
+			
+			job4.setMapOutputKeyClass(TextIntWritable.class);
+			job4.setMapOutputValueClass(NullWritable.class);
+			
+		    job4.setSortComparatorClass(KeyComparator.class);
+		    
+		    job4.setReducerClass(SortedVisiteesReducer.class);
+		    
+		    job4.setInputFormatClass(SequenceFileInputFormat.class);
+		    
+		    Path outputPath = new Path(args2[1]);
+			if(fs.exists(outputPath)){
+		    	fs.delete(outputPath,true);
+		    }
+		    
+			FileInputFormat.addInputPath(job4, tmpPath3);
+			FileOutputFormat.setOutputPath(job4, outputPath);
+
+		    job4.waitForCompletion(true);
+			
 		}
 		
 	}

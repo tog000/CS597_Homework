@@ -7,8 +7,9 @@ import java.io.IOException;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
-public class VisitWritable implements Writable{
+public class VisitWritable implements WritableComparable<VisitWritable>{
 
 	public IntWritable week;
 	public Text visitor;
@@ -41,6 +42,10 @@ public class VisitWritable implements Writable{
 		week.write(dataOutput);
 		visitor.write(dataOutput);
 		visitee.write(dataOutput);
+	}
+
+	public int compareTo(VisitWritable vw) {
+		return this.week.compareTo(vw.week);
 	}
 
 }
