@@ -69,7 +69,7 @@ public class ProblemII {
 			
 			long lineNumber = key.get() / (value.getLength()+1);
 			
-			System.out.println("key="+key.toString()+" length="+value.getLength());
+			//System.out.println("key="+key.toString()+" length="+value.getLength());
 			
 			// Parse line (tab delimited)
 			String[] parts = value.toString().split("\t");
@@ -140,7 +140,7 @@ public class ProblemII {
 				
 				runningTotal+=fromA*fromB;
 				
-				System.out.println(key.toString()+"-> "+fromA+"*"+fromB+" +="+runningTotal);
+				//System.out.println(key.toString()+"-> "+fromA+"*"+fromB+" +="+runningTotal);
 				
 			}
 			

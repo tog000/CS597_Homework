@@ -203,11 +203,10 @@ public class ProblemI {
 
 		public void reduce(IntWritable key, Iterable<VisitWritable> values,  Context context) throws IOException, InterruptedException {
 			
-			// We want write back with the week as the key and visitee as value
+			// We want write back with the visitee as key and visitor as value
 			int total = 0;
 			for(VisitWritable visit : values){
 				mos.write("week", visit.visitee, visit.visitor, key.toString());
-				//context.write(visit.week, visit.visitee);
 				total += 1;
 			}
 
