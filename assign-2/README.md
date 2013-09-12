@@ -109,19 +109,3 @@ and repeat for each pair of values on the input, and when its done, write back t
 
 If the Y coordinate is different than 0 and the X coordinate is 0, it means that we need to
 insert a new line.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
