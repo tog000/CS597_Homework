@@ -120,10 +120,10 @@ public class ProblemII {
 			
 			FileSystem fs = FileSystem.get(config);
 			
-			// Why doesn't this work?!?!
-			//out = fs.create(new Path(config.get(ProblemII.OUTPUT_PATH)));
+			// Why doesn't this work?!?! Figured it out...
+			out = fs.create(new Path(config.get(ProblemII.OUTPUT_PATH)));
 			
-			out = fs.create(new Path("output_matrix"));
+			//out = fs.create(new Path("output_matrix"));
 			
 		}
 		
@@ -175,6 +175,8 @@ public class ProblemII {
 		
 		conf.set(MATRIX_WIDTH, arguments[3]);
 		conf.set(MATRIX_HEIGHT, arguments[4]);
+		
+		conf.set(OUTPUT_PATH, arguments[2]);
 
 		Job job = new Job(conf);
 		job.setJarByClass(ProblemII.class);
@@ -189,8 +191,6 @@ public class ProblemII {
 		if(fs.exists(outputPath)){
 	    	fs.delete(outputPath,true);
 	    }
-		
-		conf.set(OUTPUT_PATH, arguments[2]);
 		
 		FileOutputFormat.setOutputPath(job, outputPath);
 
