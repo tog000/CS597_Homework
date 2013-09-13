@@ -1,0 +1,60 @@
+Hi,
+
+There are a few things to note
+
+[A] The assignment listed the following
+....
+Write a java program that will:
+•	Accept three input arguments: 
+1.	input file name
+2.	output folder path
+3.	numeric argument (query id), range limited from 1 to 2.
+...
+
+The submitted assignment expects an input folder and looks for a hardcoded file name
+in the specified folder
+
+[B] The main function is written as follows:
+
+public static void main(String[] args) throws Exception {
+
+/**/
+new App("WhiteHouse-WAVES-2012.csv", "./", 1);
+//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+//new App("WhiteHouse-WAVES-2012.csv", "./", 3);
+/*/							<--- you have a missing * here, else all would have worked fine !!!
+if(args.length < 3){
+System.out.printf("Usage: ./run.sh <input file> <output folder> <query number>%n");
+}else{
+new App(args[0], args[1], Integer.valueOf(args[2]));
+}
+/**/
+
+System.out.println("exiting ...");
+}
+
+This means that the command line arguments are ignored and there is no way for the
+query 2 could be executed. Also, even if the command line arguments were being
+parsed, the commented code will prevent the code from ever being executed.
+
+[C] Problem [A] occurs because of problem B.
+
+Considering it is an oversight and the code works correctly if the missing '*' is corrected,
+the assignment would get 
+
+[D] The output format for query 1 was
+o	Write the NameFirst, NameLast, Number of Visits to a tab-separated file named query_results_1.tsv in the output folder path
+the submitted code reverses the order and prints lastname, firstname, number of visits
+
+GRADE: 46 marks out of 50
+
+-1 for breaking compatibility with the test script
+-1 for making instructor make the code changes
+-2 for reversing the order of the o/p fields
+
+For doing the stretch problems, I would assign you 10 marks for extra cretit
+
+*****
+Your total credit for this assignment would be 56, although I would expect more due diligence hence forth.
+****
+
