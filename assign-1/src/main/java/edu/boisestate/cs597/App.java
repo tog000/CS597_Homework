@@ -97,7 +97,7 @@ public class App {
 				public Object call() throws Exception {
 					String[] parts = line.split(",");
 
-					String key = (parts[0] + "\t" + parts[1]).toUpperCase();
+					String key = (parts[1] + "\t" + parts[0]).toUpperCase();
 					
 					// If the HashMap already contains the visitor name
 					if (hmap.containsKey(key)) {
@@ -182,7 +182,7 @@ public class App {
 					cal.setTime(date);
 					
 					// Generate key with visitor name
-					String key = parts[0] + "\t" + parts[1];
+					String key = (parts[1] + "\t" + parts[0]).toUpperCase();
 
 					// Extract week of the year
 					int week = cal.get(Calendar.WEEK_OF_YEAR);
@@ -191,7 +191,7 @@ public class App {
 					
 					// Some lines are incomplete, filter
 					if(parts.length > 22){
-						visitee = new PersonVisits((parts[19]+" "+parts[20]).toUpperCase());
+						visitee = new PersonVisits((parts[20]+"\t"+parts[19]).toUpperCase());
 					}else{
 						visitee = new PersonVisits("NO NAME");
 					}
@@ -385,9 +385,9 @@ public class App {
 
 	public static void main(String[] args) throws Exception {
 		
-		/**/
-			new App("WhiteHouse-WAVES-2012.csv", "./", 1);
-			//new App("WhiteHouse-WAVES-2012.csv", "./", 2);
+		/**
+			//new App("WhiteHouse-WAVES-2012.csv", "./", 1);
+			new App("WhiteHouse-WAVES-2012.csv", "./", 2);
 			//new App("WhiteHouse-WAVES-2012.csv", "./", 3);
 		/*/
 		if(args.length < 3){
