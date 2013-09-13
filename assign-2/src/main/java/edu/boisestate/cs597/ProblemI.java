@@ -53,7 +53,7 @@ public class ProblemI {
 			parts = line.toString().split(",");
 			
 			if(parts.length > 2){
-				context.write(new Text(parts[0].toUpperCase()+"\t"+parts[1].toUpperCase()), new IntWritable(1));
+				context.write(new Text(parts[1].toUpperCase()+"\t"+parts[0].toUpperCase()), new IntWritable(1));
 			}
 		}
 		
@@ -164,7 +164,7 @@ public class ProblemI {
 			
 			weekNumber = cal.get(Calendar.WEEK_OF_YEAR);
 			visitor = (parts[2]+"\t"+parts[1]).toUpperCase();
-			visitee = (parts[19]+"\t"+parts[20]).toUpperCase();
+			visitee = (parts[20]+"\t"+parts[19]).toUpperCase();
 
 			// THIS DOESN'T WORK, we want UNIQUE visitors
 			//context.write(new IntWritable(weekNumber),new VisitWritable(weekNumber, visitor, visitee));
