@@ -34,9 +34,12 @@ public class ProteinWritable implements WritableComparable<ProteinWritable>, Clo
 	public void setPath(Text path) {
 		this.path = path;
 	}
+	public void setPath(String path) {
+		this.path = new Text(path);
+	}
 	
 	public void appendToPath(int id) {
-		this.path.set(Integer.valueOf(id).toString()+",");
+		this.path.set(this.path.toString()+Integer.valueOf(id).toString()+",");
 		incrementPathLength();
 	}
 	
@@ -105,8 +108,8 @@ public class ProteinWritable implements WritableComparable<ProteinWritable>, Clo
 	protected ProteinWritable clone() throws CloneNotSupportedException{
 		ProteinWritable pw = new ProteinWritable();
 		pw.id = new IntWritable(this.id.get());
-		pw.name = new Text(this.name);
-		pw.path = new Text(this.path);
+		pw.name = new Text(this.name.toString());
+		pw.path = new Text(this.path.toString());
 		pw.pathLength = new IntWritable(this.pathLength.get());
 		return pw;
 	}

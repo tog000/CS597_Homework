@@ -50,8 +50,13 @@ public class ProblemIII {
 	public static final String SOURCE_PROTEIN_NUMBER = "srcn";
 	public static final String DESTINATION_PROTEIN_NUMBER = "dstn";
 	
+	public static final String FROM_EDGES = "BBB";
+	public static final String FROM_GRAPH = "AAA";
+	
 	public enum MyCounter{
-		  ITERATION_COUNT
+		  ITERATION_COUNT,
+		  CONVERGENCE_COUNTER,
+		  DESTINATION_FOUND_COUNTER
 	}	
 	
 	public static class Map extends Mapper<LongWritable, Text, ProteinWritable, ProteinWritable> {
@@ -100,7 +105,6 @@ public class ProblemIII {
 				if(currentLine!=null && currentLine.contains(source)){
 					context.getConfiguration().setInt(ProblemIII.SOURCE_PROTEIN_NUMBER,protein.id.get());
 					mos.write("source", protein.id, NullWritable.get());
-					System.out.println("FOUND THE SOURCE -> "+protein.id.get());
 				}else if(currentLine!=null && currentLine.contains(destination)){
 					context.getConfiguration().setInt(ProblemIII.DESTINATION_PROTEIN_NUMBER,protein.id.get());
 					mos.write("destination", protein.id, NullWritable.get());
@@ -142,7 +146,6 @@ public class ProblemIII {
 
 		private String source;
 		private String destination;
-		private int destinationNumber;
 		private Iterator<ProteinWritable> i;
 		private MultipleOutputs mos;
 		
@@ -152,7 +155,6 @@ public class ProblemIII {
 			Configuration conf = context.getConfiguration();
 			source = conf.get(ProblemIII.SOURCE_PROTEIN_NAME);
 			destination = conf.get(ProblemIII.DESTINATION_PROTEIN_NAME);
-			destinationNumber = conf.getInt(ProblemIII.DESTINATION_PROTEIN_NUMBER,-1);
 			
 			mos = new MultipleOutputs(context);
 			
@@ -166,17 +168,21 @@ public class ProblemIII {
 				i=values.iterator();
 				ProteinWritable pw1 = i.next().clone();
 				
-				System.out.println("id="+key.id.get()+"| key="+key.name.toString()+"| PW1.name="+pw1.name.toString()+" PW1.id="+pw1.id.get()+"|");//+" next="+i.next().id.get());
+				System.out.println("id="+key.id.get()+"| key="+key.name.toString()+"| PW1.name="+pw1.name.toString()+" PW1.id="+pw1.id.get()+"|");
 				
 				if (pw1.name.toString().equals(source)){
 					
+					System.out.println("MATCHED WITH SOURCE!");
+					
 					while(i.hasNext()){
+						
+						System.out.println("HAD CHILDREN!");
 						
 						ProteinWritable pw2 = i.next().clone();
 						
 						pw2.appendToPath(pw1.id.get());
 						
-						pw2.setName(new Text("AAA"));
+						pw2.setName(new Text(FROM_GRAPH));
 						
 						//context.write(pw2,pw2);
 						mos.write("proteins", pw2, pw2);
@@ -215,7 +221,7 @@ public class ProblemIII {
 		public void map(ProteinWritable key, ProteinWritable value, Context context) throws IOException, InterruptedException{
 			
 			if(isEdgesFile){
-				key.setName(new Text("BBB"));
+				key.setName(new Text(FROM_EDGES));
 			}
 			// We are operating on the results from the last time!
 			context.write(key, value);
@@ -228,7 +234,7 @@ public class ProblemIII {
 
 		private int destinationNumber;
 		private Iterator<ProteinWritable> i;
-		
+		private Counter convergenceCounter, destinationFoundCounter;
 		private MultipleOutputs<ProteinWritable,ProteinWritable> mos;
 		
 		@Override
@@ -236,6 +242,12 @@ public class ProblemIII {
 			
 			Configuration conf = context.getConfiguration();
 			destinationNumber = Integer.valueOf(conf.get(ProblemIII.DESTINATION_PROTEIN_NUMBER));
+			
+			convergenceCounter = context.getCounter(ProblemIII.MyCounter.CONVERGENCE_COUNTER);
+			destinationFoundCounter = context.getCounter(ProblemIII.MyCounter.DESTINATION_FOUND_COUNTER);
+			
+			convergenceCounter.setValue(0);
+			destinationFoundCounter.setValue(0);
 			
 			mos = new MultipleOutputs<ProteinWritable,ProteinWritable>(context);
 			
@@ -249,29 +261,42 @@ public class ProblemIII {
 				i=values.iterator();
 				ProteinWritable pw1 = i.next().clone();
 				
-				if (pw1.name.toString().equals("AAA")){
+				if(pw1.name.toString().equals(FROM_GRAPH)){
+					
+					ProteinWritable pw2;
 					
 					while(i.hasNext()){
 						
-						ProteinWritable pw2 = i.next().clone();
+						pw2 = i.next().clone();
 						
-						pw2.appendToPath(pw1.id.get());
+						System.out.println(pw2.path.toString()+" contains "+ String.valueOf(pw1.id.get())+" = "+(pw2.path.toString().indexOf(String.valueOf(pw1.id.get()))));
 						
-						if(pw2.id.get() == destinationNumber){
-							String[] path = pw2.path.toString().split(",");
-							System.out.println("Found the path!="+pw2.path.toString());
-							for(int i=0;i<path.length;i++){
-								ProteinWritable pw =  new ProteinWritable(Integer.valueOf(path[i]),"");
-								mos.write("result", pw, pw);
+						if(pw2.id.get() != pw1.id.get() && !pw2.path.toString().contains(String.valueOf(pw1.id.get()))){
+							
+							convergenceCounter.increment(1);
+							
+							pw2.setPath(pw1.path.toString());
+							pw2.appendToPath(pw1.id.get());
+							
+							System.out.println("For node "+pw2.id.get()+"-> added "+pw1.id.get()+" to path("+pw2.path.toString()+")");
+							
+							if(pw2.id.get() == destinationNumber && destinationFoundCounter.getValue() == 0){
+								String[] path = pw2.path.toString().split(",");
+								System.out.println("Found the path!="+pw2.path.toString());
+								for(int i=0;i<path.length;i++){
+									ProteinWritable pw =  new ProteinWritable(Integer.valueOf(path[i]),"");
+									mos.write("result", pw, pw);
+								}
+								destinationFoundCounter.setValue(1);
 							}
-						}
-						
-						pw2.setName(new Text("AAA"));
-						
-						mos.write("proteins", pw2, pw2);
-						//context.write(pw2,pw2);
-						
-					} 
+							
+							pw2.setName(new Text(FROM_GRAPH));
+							
+							mos.write("proteins", pw2, pw2);
+							//context.write(pw2,pw2);
+							
+						}						
+					}
 				}
 
 			} catch (CloneNotSupportedException e) {
@@ -318,7 +343,7 @@ public class ProblemIII {
 		@Override
 		public void cleanup(Context context) throws IOException, InterruptedException{
 			String buffer = source+" ";
-			if(path.equals("")){
+			if(path.size()==0){
 				buffer+="null ";
 			}else{
 				for(String protein : path){
@@ -424,20 +449,41 @@ public class ProblemIII {
 	    	}
 	    }
 		
-		System.out.println("SOURCE NUMBER---->"+sourceNumber);
-		System.out.println("DESTINATION NUMBER---->"+destinationNumber);
+		System.out.println("Source Protein found with id="+sourceNumber);
+		System.out.println("Destination Protein found with id="+destinationNumber);
 		
 		// Now the magic starts, we iterate until destination is found
 		
-		/**/
+		Counter convergenceCounter = null;
+		Counter destinationFoundCounter = null;
 		
-		for(int i=0;i<1;i++){
+		boolean proteinsFound = false;
+		
+		do{
 			
-			Job iterJob = new Job(conf,"Find destination protein");
-			iterJob.setJarByClass(ProblemIII.class); 
+			Job iterJob = new Job(conf,"Find destination protein (Iterate)");
+			iterJob.setJarByClass(ProblemIII.class);
 			
 			iterJob.getConfiguration().setInt(ProblemIII.SOURCE_PROTEIN_NUMBER, sourceNumber);
 			iterJob.getConfiguration().setInt(ProblemIII.DESTINATION_PROTEIN_NUMBER, destinationNumber);
+
+			
+			// Add protein files from the previous iteration as input
+			proteinsFound = false;
+			Path proteinsPath = new Path("tmp"+counter.getValue());
+			fss = fs.listStatus(proteinsPath);
+			for (FileStatus status : fss) {
+				if(status.getPath().getName().contains("proteins")){
+					proteinsFound = true;
+					System.out.println("Added path \""+status.getPath().getName()+"\"");
+					FileInputFormat.addInputPath(iterJob, status.getPath());
+				}
+			}
+			
+			if(!proteinsFound){
+				System.out.println("No proteins found after expanding from node id="+sourceNumber);
+				break;
+			}
 	
 			iterJob.setMapperClass(IterableMap.class);
 			iterJob.setReducerClass(IterableReduce.class);
@@ -457,9 +503,6 @@ public class ProblemIII {
 			MultipleOutputs.addNamedOutput(iterJob, "proteins", SequenceFileOutputFormat.class, ProteinWritable.class, ProteinWritable.class);
 			MultipleOutputs.addNamedOutput(iterJob, "result", SequenceFileOutputFormat.class, ProteinWritable.class, ProteinWritable.class);
 			
-			// Add protein files from the previous iteration as input
-			FileInputFormat.addInputPath(iterJob, new Path("tmp"+counter.getValue()+"/proteins*"));
-			
 			counter.increment(1);
 			
 			Path iterPath = new Path("tmp"+counter.getValue());
@@ -472,6 +515,13 @@ public class ProblemIII {
 			
 			iterJob.waitForCompletion(true);
 			
+			convergenceCounter = iterJob.getCounters().findCounter(ProblemIII.MyCounter.CONVERGENCE_COUNTER);
+			destinationFoundCounter = iterJob.getCounters().findCounter(ProblemIII.MyCounter.DESTINATION_FOUND_COUNTER);
+			
+		}while(convergenceCounter.getValue() > 0 && destinationFoundCounter.getValue() == 0);
+		
+		if(proteinsFound){
+			System.out.printf("The search concluded. convergenceCounter=%d destinationFoundCounter=%d\n",convergenceCounter.getValue(), destinationFoundCounter.getValue());
 		}
 		
 		Job job2 = new Job(conf,"Resolve path to protein names");
@@ -490,7 +540,11 @@ public class ProblemIII {
 		job2.setOutputValueClass(ProteinWritable.class);
 		
 		FileInputFormat.addInputPath(job2, new Path("tmp0/nodes*"));
-		FileInputFormat.addInputPath(job2, new Path("tmp"+counter.getValue()+"/result*"));
+		
+		if(proteinsFound){
+			Path resultsPath = new Path("tmp"+counter.getValue()+"/result*");
+			FileInputFormat.addInputPath(job2, resultsPath);
+		}
 		
 		Path outputPath = new Path(arguments[2]);
 		if(fs.exists(outputPath)){
@@ -516,6 +570,8 @@ public class ProblemIII {
 				fs.delete(pathDelete,true);
 			}
 		}
+		
+		fs.close();
 		
 	}
 
