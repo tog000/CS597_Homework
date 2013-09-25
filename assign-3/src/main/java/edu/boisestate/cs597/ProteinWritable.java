@@ -19,20 +19,17 @@ public class ProteinWritable implements WritableComparable<ProteinWritable>, Clo
 	public IntWritable getId() {
 		return id;
 	}
-	public void setId(IntWritable id) {
-		this.id = id;
+	public void setId(int id) {
+		this.id = new IntWritable(id);
 	}
 	public Text getName() {
 		return name;
 	}
-	public void setName(Text name) {
-		this.name = name;
+	public void setName(String name) {
+		this.name = new Text(name);
 	}
 	public Text getPath() {
 		return path;
-	}
-	public void setPath(Text path) {
-		this.path = path;
 	}
 	public void setPath(String path) {
 		this.path = new Text(path);
@@ -49,6 +46,7 @@ public class ProteinWritable implements WritableComparable<ProteinWritable>, Clo
 	public void setPathLength(IntWritable pathLength) {
 		this.pathLength = pathLength;
 	}
+	
 	public void incrementPathLength() {
 		this.pathLength.set(this.pathLength.get()+1);
 	}
