@@ -115,7 +115,7 @@ public class ProblemIII {
 			}else{
 				protein = new ProteinWritable(scn.nextInt(),"");
 				protein2 = new ProteinWritable(scn.nextInt(),"");
-				System.out.println("FOUND AN EDGE-> "+protein2.id.get());
+				//System.out.println("FOUND AN EDGE-> "+protein2.id.get());
 				
 				mos.write("edges", protein, protein2);
 				
@@ -305,7 +305,7 @@ public class ProblemIII {
 			// If the protein happens to be the destination AND the destination hasn't been found yet
 			if(proteine.id.get() == destinationNumber && destinationFoundCounter.getValue() == 0){
 				
-				System.out.println("FOUND THE PATH->"+proteine.path.toString());
+				//System.out.println("FOUND THE PATH->"+proteine.path.toString());
 				
 				String[] path = proteine.path.toString().split(",");
 				
@@ -366,7 +366,7 @@ public class ProblemIII {
 			ProteinWritable pw = i.next();
 			
 			if (i.hasNext()){
-				System.out.println("Added \""+pw.name.toString()+"\"node to the list with ID->"+pw.id.toString());
+				//System.out.println("Added \""+pw.name.toString()+"\"node to the list with ID->"+pw.id.toString());
 				path.add(pw.name.toString());
 			}
 		
@@ -511,6 +511,13 @@ public class ProblemIII {
 					System.out.println("Added path \""+status.getPath().getName()+"\"");
 					FileInputFormat.addInputPath(iterJob, status.getPath());
 				}
+			}
+			
+			System.out.println("Current Paths:");
+			
+			Path[] paths = FileInputFormat.getInputPaths(iterJob);
+			for (Path p : paths){
+				System.out.println(p.getParent().getName()+"/"+p.getName());
 			}
 			
 			if(!proteinsFound){

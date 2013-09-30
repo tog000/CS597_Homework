@@ -259,7 +259,7 @@ public class ProblemIIIExtra {
 				if(pw1.name.toString().equals(FROM_GRAPH)){
 					
 					// Check to see if we've found the destination
-					MSTFound = checkForMST(pw1);
+					MSTFound = checkForMinimumPath(pw1);
 					
 					// For each of its neighbors 
 					while(i.hasNext() && !MSTFound){
@@ -277,7 +277,7 @@ public class ProblemIIIExtra {
 							pw2.appendToPath(pw1.id.get());
 							
 							// Check to see if we've found the destination, if found, break
-							if(checkForMST(pw2)){
+							if(checkForMinimumPath(pw2)){
 								break;
 							}
 							
@@ -293,7 +293,7 @@ public class ProblemIIIExtra {
 			}
 		}
 		
-		public boolean checkForMST(ProteinWritable protein) throws IOException, InterruptedException{
+		public boolean checkForMinimumPath(ProteinWritable protein) throws IOException, InterruptedException{
 			
 			ProteinWritable rpw;
 			
@@ -305,25 +305,19 @@ public class ProblemIIIExtra {
 			System.out.println("Evaluating on node "+ protein.id +" if this path is a MST.\nPath="+path+"   MST="+proteinsListNumber+"\n");
 			
 			String paths[] = path.split(",");
-			boolean MSTComplete = true;
-			boolean matches;
+			boolean MinimumPath = false;
 			for(int i=0;i<proteins.length;i++){
-				matches = false;
 				for(int j=0;j<paths.length;j++){
 					if(paths[j].equals(proteins[i])){
-						matches = true;
+						MinimumPath = true;
 						break;
 					}
-				}
-				if(!matches){
-					MSTComplete = false;
-					break;
 				}
 			}
 			
 			
 			
-			if(MSTComplete && destinationFoundCounter.getValue() == 0){
+			if(MinimumPath && destinationFoundCounter.getValue() == 0){
 				
 				System.out.println("FOUND THE MST->"+protein.path.toString());
 				
