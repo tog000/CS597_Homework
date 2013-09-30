@@ -39,12 +39,12 @@ public class AppTest
     	WeekdaysBetweenDates wbd = new WeekdaysBetweenDates();
 		Tuple input = new DefaultTuple();
 		
-		input.append("09/30/13");
-		input.append("12/27/13");
+		input.append("01/01/13");
+		input.append("12/31/13");
     	
 		Integer output = wbd.exec(input);
 		
-        assertEquals(64,output.intValue());
+        assertEquals(260,output.intValue());
         
     }
 }
