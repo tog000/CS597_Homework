@@ -14,7 +14,7 @@ max_week = LIMIT result_sorted 1;
 
 visitors_max_week = FILTER visitors BY edu.boisestate.cs597.WeekOfYear(APPT_START_DATE) == max_week.group;
 
-visitors_max_week_grouped = GROUP visitors_max_week BY (UPPER(visitee_namefirst), UPPER(visitee_namelast));
+visitors_max_week_grouped = GROUP visitors_max_week BY (visitee_namefirst, visitee_namelast);
 
 result = FOREACH visitors_max_week_grouped GENERATE group.$0,group.$1,COUNT(visitors_max_week) AS total_visits;
 
