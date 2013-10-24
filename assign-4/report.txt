@@ -1,0 +1,12 @@
+Total points: 44 out of 50
+
+Q1 - part 1 - 10 out of 10
+Q1 - part 2 - 10 out of 10
+
+Q2 - Script - 10 out of 10
+Q2 - UDF - 14 out of 20
+
+ The UDF would not return the correct results for two cases:
+1. The start date and end date are in different years
+2. The start date > end date
+
