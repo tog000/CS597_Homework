@@ -272,7 +272,7 @@ public class ProblemI {
 	public static void main(String[] args) throws Exception {
 		
 		Configuration conf = new Configuration();
-	    FileSystem fs = FileSystem.get(conf);	    
+	    FileSystem fs = FileSystem.get(conf);
 	    
 		int QueryId = Integer.parseInt(args[2]);
 		
