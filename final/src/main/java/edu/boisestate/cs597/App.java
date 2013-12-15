@@ -10,6 +10,7 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -165,7 +166,7 @@ public class App {
 				// If the user who needs a recommendation rated this current movie
 				if(moviesNeedingRecommendationByUser.containsKey(mrs.user.toString())){
 					//int index = usersWhoNeedRecommendation.indexOf(mrs.user.toString());
-					System.out.println("Found a movie that an user who needs recommendation has seen before! "+mrs.user.toString()+"->"+mrs.movie.toString());
+					//System.out.println("Found a movie that an user who needs recommendation has seen before! "+mrs.user.toString()+"->"+mrs.movie.toString());
 					
 					LinkedList<String> list = moviesNeedingRecommendationByUser.get(mrs.user.toString());
 					
@@ -174,18 +175,14 @@ public class App {
 						mos.write(new Text(movie), new Text(mrs.toString()), MOVIES_SEEN_BY_USER);//+"_"+mrs.movie);
 					}
 					
+					mos.write(mrs.movie, new Text(mrs.rating.toString()), RATINGS_FROM_TARGET_USER+"_"+mrs.user.toString());//+"_"+mrs.movie);
+					
 				}
 				
 				if(moviesNeedingRecommendation.indexOf(mrs.movie.toString()) >= 0 ){
 					//System.out.println("Found a user who saw a the movie we are trying to rate");
 					//mos.write(key, new Text(mrs.toString()), USERS_WHO_SAW_MOVIE);//+"_"+mrs.movie);
 					mos.write(mrs.user, mrs.movie, USERS_WHO_SAW_MOVIE);//+"_"+mrs.movie);
-				}
-				
-				if(moviesNeedingRecommendation.indexOf(mrs.movie.toString()) >= 0 ){
-					if(moviesNeedingRecommendationByUser.containsKey(mrs.user.toString())){
-						mos.write(mrs.movie, new Text(mrs.rating.toString()), RATINGS_FROM_TARGET_USER+"_"+mrs.user.toString());//+"_"+mrs.movie);
-					}
 				}
 				
 
@@ -293,6 +290,7 @@ public class App {
 			br.close();
 			
 			
+			/**
 			System.out.println("targetMovies");
 			for(Entry<String,LinkedList<String>> entry : targetMovies.entrySet()){
 				System.out.println("["+entry.getKey()+"]->"+Arrays.toString(entry.getValue().toArray()));
@@ -307,7 +305,7 @@ public class App {
 			for(Entry<String,LinkedList<String>> entry : usersWhoSawTargetMovie.entrySet()){
 				System.out.println("["+entry.getKey()+"]->"+Arrays.toString(entry.getValue().toArray()));
 			}
-			
+			/**/
 			
 			
 		}
@@ -326,11 +324,11 @@ public class App {
 				
 				String currentUser = parts[0];
 				
-				System.out.println("I'm Movie "+currentMovie);
+				//System.out.println("I'm Movie "+currentMovie);
 				
 				if (moviesSeenByTargetUser.containsKey(currentMovie)){
 					
-					System.out.println("I was seen by target user.");
+					//System.out.println("I was seen by target user.");
 					
 					// We are in a movie that was seen by a target user
 					if (usersWhoSawTargetMovie.containsKey(currentUser)){
@@ -344,7 +342,7 @@ public class App {
 						
 						LinkedList<MovieRatingSimilarity> list = moviesSeenByTargetUser.get(currentMovie);
 						for(MovieRatingSimilarity mrs : list){
-							System.out.println("OLD->"+mrs.user.toString()+"_"+mrs.movie.toString()+" = Rating from "+parts[0]);
+							//System.out.println("OLD->"+mrs.user.toString()+"_"+mrs.movie.toString()+" = Rating from "+parts[0]);
 							context.write(new Text(mrs.user.toString()+"_"+mrs.movie.toString()), new MovieRatingSimilarity(currentMovie,parts[0],parts[1]));
 						}
 						
@@ -361,7 +359,7 @@ public class App {
 					
 					for(String user : list){
 						//context.write(new Text(user+"_"+currentMovie), new MovieRatingSimilarity(currentMovie, parts[0], parts[1]));
-						System.out.println("DIRECT->"+user+"_"+currentMovie+" = Rating from "+parts[0]);
+						//System.out.println("DIRECT->"+user+"_"+currentMovie+" = Rating from "+parts[0]);
 						context.write(new Text(user+"_"+currentMovie), new MovieRatingSimilarity(currentMovie,parts[0],parts[1]));
 					}
 				}
@@ -370,7 +368,7 @@ public class App {
 	}
 
 	
-	public static class SimilarityReducer extends Reducer<Text, MovieRatingSimilarity, Text, DoubleWritable>{
+	public static class SimilarityReducer extends Reducer<Text, MovieRatingSimilarity, DoubleWritable, Text>{
 		
 		private MultipleOutputs<DoubleWritable, Text> mos;
 		
@@ -418,7 +416,7 @@ public class App {
 			HashMap<String,HashMap<String, Float>> moviePairUser = new HashMap<String,HashMap<String, Float>>();
 			
 			for(MovieRatingSimilarity mrs : values){
-				System.out.println("["+key+"] -> "+mrs);
+				//System.out.println("["+key+"] -> "+mrs);
 				
 				
 				if(!moviePairUser.containsKey(mrs.movie.toString())){
@@ -437,6 +435,7 @@ public class App {
 			}
 			
 
+			/**
 			for(Entry<String,HashMap<String, Float>> entry: moviePairUser.entrySet()){
 				
 				System.out.println("["+entry.getKey()+"]");
@@ -444,6 +443,7 @@ public class App {
 					System.out.println("\t{"+entry2.getKey()+"}"+entry2.getValue());
 				}
 			}
+			/**/
 			
 			String targetMovie = key.toString().split("_")[1];
 			HashMap<String, Float> targetMovieHashMap = moviePairUser.get(targetMovie);
@@ -555,6 +555,7 @@ public class App {
 		
 		// Binary FTW
 		//correlationJob.setOutputFormatClass(SequenceFileOutputFormat.class);
+		LazyOutputFormat.setOutputFormatClass(job2, SequenceFileOutputFormat.class);
 		
 		job2.setMapperClass(SecondMapper.class);
         job2.setReducerClass(SimilarityReducer.class);
@@ -572,13 +573,109 @@ public class App {
 		job2.setMapOutputKeyClass(Text.class);
         job2.setMapOutputValueClass(MovieRatingSimilarity.class);
         
-        job2.setOutputKeyClass(Text.class);
-        job2.setOutputValueClass(FloatWritable.class);
+        job2.setOutputKeyClass(DoubleWritable.class);
+        job2.setOutputValueClass(Text.class);
 		
 		job2.getConfiguration().set("inputFile", options[2]);
 		job2.getConfiguration().set("stage1OutputPath", outputPathStage1.toString());
 		
 		job2.waitForCompletion(true);
+		
+		//ArrayList<String> moviesNeedingRecommendation = new ArrayList<String>();
+		//HashMap<String,LinkedList<String>> moviesNeedingRecommendationByUser = new HashMap<String,LinkedList<String>>();
+		// SequenceFile.Reader reader = new SequenceFile.Reader(fs,fileSplit.getPath(), context.getConfiguration());
+		BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(options[2]))));
+		String parts[];
+
+		FSDataOutputStream out = fs.create(new Path(outputPath.toString()+"/final_output_predictions.txt"));
+		
+		String line = br.readLine();
+		while (line != null) {
+			parts = line.split(",");
+			
+			//System.out.println("Read line: "+line);
+			
+			String currentUser = parts[0];
+			String currentMovie = parts[1];
+			
+			HashMap<String, Float> ratingsFromUser = new HashMap<String, Float>();
+			HashMap<String, Float> similaritiesToTargetMovie = new HashMap<String, Float>();
+			
+			SequenceFile.Reader reader = null;
+			Writable key;
+			Writable value;
+			FileStatus[] fss = fs.listStatus(outputPathStage1);
+		    for (FileStatus file : fss) {
+				try{
+					//System.out.println("Listed file STAGE1:"+file.getPath());
+					/**/
+					if (file.getPath().getName().contains(RATINGS_FROM_TARGET_USER+"_"+currentUser+"-")) {
+						reader = new SequenceFile.Reader(fs, file.getPath(), conf);
+						key = (Writable)ReflectionUtils.newInstance(reader.getKeyClass(), conf);
+						value = (Writable)ReflectionUtils.newInstance(reader.getValueClass(), conf);
+						//long position = reader.getPosition();
+						while (reader.next(key, value)) {			
+							//System.out.println("Added rating from user="+key.toString()+" and "+value.toString());
+							ratingsFromUser.put(key.toString(),Float.valueOf(value.toString()));
+						}
+					}
+					/**/
+			    } finally {
+			      IOUtils.closeStream(reader);
+			    }
+		    }
+			
+			fss = fs.listStatus(outputPath);
+		    for (FileStatus file : fss) {
+				try{
+					//System.out.println("Listed file FINAL:"+file.getPath());
+					/**/
+					if (file.getPath().getName().contains(SIMILARITIES+"_"+currentUser+"_"+currentMovie+"-")) {
+						reader = new SequenceFile.Reader(fs, file.getPath(), conf);
+						key = (Writable)ReflectionUtils.newInstance(reader.getKeyClass(), conf);
+						value = (Writable)ReflectionUtils.newInstance(reader.getValueClass(), conf);
+						//long position = reader.getPosition();
+						while (reader.next(key, value)) {
+							//System.out.println("Added similarity from movir="+value.toString()+" and "+key.toString());
+							similaritiesToTargetMovie.put(value.toString(),Float.valueOf(key.toString()));
+						}
+					}
+					/**/
+			    } finally {
+			      IOUtils.closeStream(reader);
+			    }
+		    }
+			
+		    int movieCounter = 0;
+		    double topPart = 0;
+		    double bottomPart = 0;
+		    
+		    for(Entry<String, Float> entry : similaritiesToTargetMovie.entrySet()){
+		    	if(movieCounter > 7){
+		    		break;
+		    	}
+		    	
+		    	topPart += entry.getValue()*ratingsFromUser.get(entry.getKey());
+		    	bottomPart += Math.abs(entry.getValue());
+		    	//System.out.println("topPart="+topPart);
+		    	//System.out.println("bottomPart="+bottomPart);
+		    	
+		    	movieCounter++;
+		    }
+			
+		    double result = topPart/bottomPart;
+		    
+		    out.writeChars(line+","+result+"\n");
+		    System.out.printf(line+","+result+"\n");
+			
+			line = br.readLine();
+		}
+
+		br.close();
+		
+		out.close();
+		
+		
 		
         //System.exit(job1.waitForCompletion(true) ? 1 : 0);
         /**
