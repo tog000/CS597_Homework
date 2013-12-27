@@ -1,0 +1,20 @@
+points 80 out of 100
+
+I ran the program twice and each time got the following results. As I am unable to validate the results, I am giving the best possible grade based onmy understanding of the code.
+
+
+
+
+
+445423,6255,NaN
+2258091,6255,NaN
+309851,6255,NaN
+1578238,6255,NaN
+667365,6255,NaN
+438544,6266,NaN
+429669,6274,NaN
+404637,6287,NaN
+1819558,6291,NaN
+697022,6303,NaN
+115522,631,NaN
+
